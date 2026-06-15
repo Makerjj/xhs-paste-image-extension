@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "XHS Paste Image",
+  "version": "0.1.0",
+  "description": "Paste clipboard images into the Xiaohongshu web creator publish panel.",
+  "permissions": ["activeTab", "clipboardRead", "scripting"],
+  "host_permissions": ["https://creator.xiaohongshu.com/*"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://creator.xiaohongshu.com/*"],
+      "js": [
+        "src/paste-image.js",
+        "src/dom-targets.js",
+        "src/upload-injection.js",
+        "src/ui.js",
+        "src/content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true
+    }
+  ],
+  "commands": {
+    "paste-image": {
+      "suggested_key": {
+        "default": "Alt+Shift+V",
+        "mac": "Alt+Shift+V"
+      },
+      "description": "Paste image from clipboard into the Xiaohongshu publish page"
+    }
+  }
+}
