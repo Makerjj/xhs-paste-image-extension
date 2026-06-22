@@ -260,46 +260,44 @@
     }
 
     // ---- Unified message listener (paste-image + localStorage I/O) ----
-    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      // Paste-image
-      if (message.type === 'xhs-paste-image') {
-        void pasteImageIntoPage().then((ok) => sendResponse({ ok }));
-        return true;
-      }
-
-      // Get localStorage snapshot
-      if (message.type === 'xhs-get-localstorage') {
-        const ls = {};
-        try {
-          for (let i = 0; i < global.localStorage.length; i++) {
-            const key = global.localStorage.key(i);
-            ls[key] = global.localStorage.getItem(key);
-          }
-        } catch (_) { /* ignore */ }
-        sendResponse(ls);
-        return;
-      }
-
-      // Restore localStorage from snapshot
-      if (message.type === 'xhs-restore-localstorage') {
-        try {
-          global.localStorage.clear();
-          const data = message.data || {};
-          for (const [key, value] of Object.entries(data)) {
-            global.localStorage.setItem(key, value);
-          }
-          sendResponse({ restored: true });
-        } catch (err) {
-          sendResponse({ restored: false, error: err.message });
+    try {
+      chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+        // Paste-image
+        if (message.type === 'xhs-paste-image') {
+          void pasteImageIntoPage().then((ok) => sendResponse({ ok }));
+          return true;
         }
-        return;
-      }
-    });
 
-    // Notify background on page load for active account detection (top frame only)
-    if (isTopFrame() && !global.__xhsSentGetAccounts) {
-      global.__xhsSentGetAccounts = true;
-      chrome.runtime.sendMessage({ type: 'getAccounts' }).catch(() => {});
+        // Get localStorage snapshot
+        if (message.type === 'xhs-get-localstorage') {
+          const ls = {};
+          try {
+            for (let i = 0; i < global.localStorage.length; i++) {
+              const key = global.localStorage.key(i);
+              ls[key] = global.localStorage.getItem(key);
+            }
+          } catch (_) { /* ignore */ }
+          sendResponse(ls);
+          return;
+        }
+
+        // Restore localStorage from snapshot
+        if (message.type === 'xhs-restore-localstorage') {
+          try {
+            global.localStorage.clear();
+            const data = message.data || {};
+            for (const [key, value] of Object.entries(data)) {
+              global.localStorage.setItem(key, value);
+            }
+            sendResponse({ restored: true });
+          } catch (err) {
+            sendResponse({ restored: false, error: err.message });
+          }
+          return;
+        }
+      });
+    } catch (e) {
+      // chrome.runtime might not be available in some contexts
     }
   }
 
