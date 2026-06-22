@@ -58,6 +58,10 @@
       .filter(Boolean);
   }
 
+  function isSyntheticUploadEvent(event) {
+    return Boolean(event?.__xhsPasteImageSyntheticUpload || global.__xhsPasteImageSyntheticDispatchDepth > 0);
+  }
+
   function uploadImageFilesToPage(files, options = {}) {
     if (!files?.length) {
       throw new Error('剪贴板里没有图片');
@@ -68,11 +72,6 @@
     const input = apiRef.findImageFileInput(documentRef);
     if (apiRef.injectFilesIntoInput(input, files)) {
       return { method: 'input' };
-    }
-
-    const dropZone = apiRef.findDropZone(documentRef);
-    if (apiRef.dispatchFilesAsDrop(dropZone, files)) {
-      return { method: 'drop' };
     }
 
     throw new Error('找不到可用的上传入口');
@@ -129,6 +128,10 @@
   }
 
   function handleDragEnterEvent(event, options = {}) {
+    if (isSyntheticUploadEvent(event)) {
+      return false;
+    }
+
     if (!hasDraggedFiles(event)) {
       return false;
     }
@@ -141,6 +144,10 @@
   }
 
   function handleDragOverEvent(event) {
+    if (isSyntheticUploadEvent(event)) {
+      return false;
+    }
+
     if (!hasDraggedFiles(event)) {
       return false;
     }
@@ -153,6 +160,10 @@
   }
 
   function handleDropEvent(event, options = {}) {
+    if (isSyntheticUploadEvent(event)) {
+      return false;
+    }
+
     if (!hasDraggedFiles(event)) {
       return false;
     }
@@ -212,14 +223,8 @@
     global.document.body?.addEventListener?.('dragover', handleDragOverEvent, true);
     global.document.body?.addEventListener?.('drop', handleDropEvent, true);
 
-    global.chrome?.runtime?.onMessage?.addListener?.((message, _sender, sendResponse) => {
-      if (message?.type !== 'xhs-paste-image') {
-        return false;
-      }
 
-      void pasteImageIntoPage().then((ok) => sendResponse({ ok }));
-      return true;
-    });
+    // Message routing is handled by the unified listener added below
   }
 
   function setupTopFrameUi() {
@@ -253,10 +258,16 @@
     } else {
       init();
     }
-  }
-  if (!global.__XHS_PASTE_IMAGE_TEST__) {
-    // ---- Account switching: localStorage I/O ----
+
+    // ---- Unified message listener (paste-image + localStorage I/O) ----
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      // Paste-image
+      if (message.type === 'xhs-paste-image') {
+        void pasteImageIntoPage().then((ok) => sendResponse({ ok }));
+        return true;
+      }
+
+      // Get localStorage snapshot
       if (message.type === 'xhs-get-localstorage') {
         const ls = {};
         try {
@@ -264,10 +275,12 @@
             const key = global.localStorage.key(i);
             ls[key] = global.localStorage.getItem(key);
           }
-        } catch (_) { /* ignore errors */ }
+        } catch (_) { /* ignore */ }
         sendResponse(ls);
         return;
       }
+
+      // Restore localStorage from snapshot
       if (message.type === 'xhs-restore-localstorage') {
         try {
           global.localStorage.clear();
@@ -283,8 +296,9 @@
       }
     });
 
-    // ---- Account switching: notify background of page load for detection ----
-    if (isTopFrame()) {
+    // Notify background on page load for active account detection (top frame only)
+    if (isTopFrame() && !global.__xhsSentGetAccounts) {
+      global.__xhsSentGetAccounts = true;
       chrome.runtime.sendMessage({ type: 'getAccounts' }).catch(() => {});
     }
   }
