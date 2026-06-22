@@ -83,6 +83,20 @@ test('updateAccount updates name, cookies, localStorage', async () => {
   assert.deepEqual(updated.localStorage, { k: 'v' });
 });
 
+test('updateAccount throws for non-existent id', async () => {
+  await assert.rejects(
+    () => updateAccount('acc_nonexistent', { name: 'x' }),
+    /not found/
+  );
+});
+
+test('deleteAccount throws for non-existent id', async () => {
+  await assert.rejects(
+    () => deleteAccount('acc_nonexistent'),
+    /not found/
+  );
+});
+
 test('deleteAccount removes account', async () => {
   const accounts = await getAllAccounts();
   const id = accounts[0].id;

@@ -45,8 +45,10 @@ export async function updateAccount(id, updates) {
 
 export async function deleteAccount(id) {
   const accounts = await getAllAccounts();
-  const filtered = accounts.filter(a => a.id !== id);
-  await chrome.storage.local.set({ [STORAGE_KEY]: filtered });
+  const idx = accounts.findIndex(a => a.id === id);
+  if (idx === -1) throw new Error(`Account ${id} not found`);
+  accounts.splice(idx, 1);
+  await chrome.storage.local.set({ [STORAGE_KEY]: accounts });
   const activeId = await getActiveAccountId();
   if (activeId === id) {
     await setActiveAccount(null);
