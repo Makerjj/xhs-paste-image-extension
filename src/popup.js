@@ -68,14 +68,30 @@ async function loadAccounts() {
   });
 }
 
-async function handleSwitch(accountId) {
-  showError(null);
+let operationInFlight = false;
+
+function disableAllButtons() {
+  operationInFlight = true;
   saveBtn.disabled = true;
+  accountList.querySelectorAll('button').forEach(b => b.disabled = true);
+}
+
+function enableAllButtons() {
+  operationInFlight = false;
+  saveBtn.disabled = !isOnXhs;
+  accountList.querySelectorAll('button').forEach(b => b.disabled = false);
+}
+
+async function handleSwitch(accountId) {
+  if (operationInFlight) return;
+  showError(null);
+  disableAllButtons();
   const resp = await chrome.runtime.sendMessage({ type: 'switchAccount', accountId });
   if (!resp.success) {
     showError(resp.error || '切换失败');
-    saveBtn.disabled = !isOnXhs;
+    enableAllButtons();
   }
+  // On success the popup closes due to tab reload — no need to re-enable
 }
 
 async function handleDelete(accountId) {

@@ -1,4 +1,4 @@
-import { getAllAccounts, saveAccount, deleteAccount, getActiveAccountId } from './account-store.js';
+import { getAllAccounts, saveAccount, deleteAccount, getActiveAccountId, setActiveAccount } from './account-store.js';
 import { captureCookies, switchToAccount, detectActiveAccount } from './account-switch.js';
 
 // ---- Existing paste-image shortcut ----
@@ -25,6 +25,7 @@ async function handleMessage(message, sender) {
       let activeId = await getActiveAccountId();
       if (!activeId && sender.tab?.url?.includes('xiaohongshu.com')) {
         activeId = await detectActiveAccount();
+        if (activeId) await setActiveAccount(activeId);
       }
       return { accounts, activeAccountId: activeId };
     }
