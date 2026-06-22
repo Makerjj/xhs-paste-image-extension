@@ -8,17 +8,23 @@ const XHS_DOMAINS = [
 ];
 
 /**
+ * Build a URL from cookie properties for chrome.cookies API calls.
+ */
+function cookieUrl(c) {
+  const protocol = c.secure ? 'https://' : 'http://';
+  const host = c.domain.startsWith('.') ? c.domain.slice(1) : c.domain;
+  return `${protocol}${host}${c.path || '/'}`;
+}
+
+/**
  * Capture all cookies for xiaohongshu domains.
+ * chrome.cookies.getAll returns [] for domains with no cookies; errors are not expected.
  */
 export async function captureCookies() {
   const all = [];
   for (const domain of XHS_DOMAINS) {
-    try {
-      const cookies = await chrome.cookies.getAll({ domain });
-      all.push(...cookies);
-    } catch (_) {
-      // domain may not have cookies
-    }
+    const cookies = await chrome.cookies.getAll({ domain });
+    all.push(...cookies);
   }
   // Deduplicate by name+domain
   const seen = new Set();
@@ -35,15 +41,17 @@ export async function captureCookies() {
  */
 export async function clearAllCookies() {
   const cookies = await captureCookies();
+  let failures = 0;
   for (const c of cookies) {
-    const protocol = c.secure ? 'https://' : 'http://';
-    const host = c.domain.startsWith('.') ? c.domain.slice(1) : c.domain;
-    const url = `${protocol}${host}${c.path || '/'}`;
     try {
-      await chrome.cookies.remove({ url, name: c.name });
+      await chrome.cookies.remove({ url: cookieUrl(c), name: c.name });
     } catch (_) {
-      // ignore individual removal failures
+      failures++;
+      console.warn(`Failed to remove cookie ${c.name}`);
     }
+  }
+  if (failures > 0) {
+    console.warn(`clearAllCookies: ${failures}/${cookies.length} removals failed`);
   }
 }
 
@@ -52,12 +60,9 @@ export async function clearAllCookies() {
  */
 export async function restoreCookies(cookies) {
   for (const c of cookies) {
-    const protocol = c.secure ? 'https://' : 'http://';
-    const host = c.domain.startsWith('.') ? c.domain.slice(1) : c.domain;
-    const url = `${protocol}${host}${c.path || '/'}`;
     try {
       await chrome.cookies.set({
-        url,
+        url: cookieUrl(c),
         name: c.name,
         value: c.value,
         domain: c.domain,
@@ -70,6 +75,23 @@ export async function restoreCookies(cookies) {
     } catch (err) {
       console.warn(`Failed to restore cookie ${c.name}:`, err);
     }
+  }
+}
+
+/**
+ * Rollback: restore backup cookies safely.
+ * Never throws — failures are logged.
+ */
+async function safeRollback(backupCookies) {
+  try {
+    await clearAllCookies();
+  } catch (_) {
+    // ignore
+  }
+  try {
+    await restoreCookies(backupCookies);
+  } catch (_) {
+    // ignore
   }
 }
 
@@ -121,8 +143,7 @@ export async function switchToAccount(accountId, tabId) {
   try {
     await restoreCookies(targetAccount.cookies || []);
   } catch (err) {
-    await clearAllCookies();
-    await restoreCookies(backupCookies);
+    await safeRollback(backupCookies);
     return { success: false, error: 'Failed to restore target cookies' };
   }
 

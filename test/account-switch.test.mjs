@@ -72,6 +72,8 @@ const {
   captureCookies,
   restoreCookies,
   clearAllCookies,
+  switchToAccount,
+  detectActiveAccount,
 } = await import('../src/account-switch.js');
 
 test('captureCookies returns cookies for xiaohongshu domains', async () => {
@@ -124,4 +126,102 @@ test('captureCookies deduplicates by name+domain', async () => {
   );
   const cookies = await captureCookies();
   assert.equal(cookies.length, 1);
+});
+
+// Seed account-store with test data for switchToAccount and detectActiveAccount tests
+const storageDataInternal = {};
+globalThis.chrome.storage.local._data = storageDataInternal;
+globalThis.chrome.storage.local.get = function (keys) {
+  if (keys === null) return Promise.resolve({ ...storageDataInternal });
+  const result = {};
+  if (Array.isArray(keys)) {
+    for (const k of keys) {
+      if (k in storageDataInternal) result[k] = storageDataInternal[k];
+    }
+  } else if (typeof keys === 'object') {
+    for (const [k, v] of Object.entries(keys)) {
+      result[k] = k in storageDataInternal ? storageDataInternal[k] : v;
+    }
+  } else if (typeof keys === 'string') {
+    if (keys in storageDataInternal) result[keys] = storageDataInternal[keys];
+  }
+  return Promise.resolve(result);
+};
+globalThis.chrome.storage.local.set = function (items) {
+  Object.assign(storageDataInternal, items);
+  return Promise.resolve();
+};
+
+async function seedAccount(id, name, sessionValue) {
+  const account = {
+    id,
+    name,
+    avatar: null,
+    createdAt: Date.now(),
+    lastUsedAt: Date.now(),
+    cookies: [{ name: 'web_session', value: sessionValue, domain: '.xiaohongshu.com', path: '/', secure: true, httpOnly: true, sameSite: 'lax' }],
+    localStorage: {},
+  };
+  const existing = storageDataInternal['xhs_accounts'] || [];
+  existing.push(account);
+  storageDataInternal['xhs_accounts'] = existing;
+}
+
+test('detectActiveAccount returns null when no accounts', async () => {
+  storageDataInternal['xhs_accounts'] = [];
+  storageDataInternal['xhs_active_account'] = null;
+  cookieStore.length = 0;
+  const result = await detectActiveAccount();
+  assert.equal(result, null);
+});
+
+test('detectActiveAccount matches current web_session to saved account', async () => {
+  storageDataInternal['xhs_accounts'] = [];
+  storageDataInternal['xhs_active_account'] = null;
+  cookieStore.length = 0;
+  cookieStore.push({ name: 'web_session', value: 'match-me', domain: '.xiaohongshu.com' });
+  await seedAccount('acc_a', '账号A', 'match-me');
+  await seedAccount('acc_b', '账号B', 'other-val');
+
+  const result = await detectActiveAccount();
+  assert.equal(result, 'acc_a');
+});
+
+test('detectActiveAccount returns null when no session cookie present', async () => {
+  storageDataInternal['xhs_accounts'] = [];
+  storageDataInternal['xhs_active_account'] = null;
+  cookieStore.length = 0;
+  await seedAccount('acc_a', '账号A', 'match-me');
+
+  const result = await detectActiveAccount();
+  assert.equal(result, null);
+});
+
+test('switchToAccount full flow succeeds', async () => {
+  storageDataInternal['xhs_accounts'] = [];
+  storageDataInternal['xhs_active_account'] = 'acc_current';
+  cookieStore.length = 0;
+  cookieStore.push({ name: 'web_session', value: 'current-sess', domain: '.xiaohongshu.com', path: '/', secure: true });
+
+  // Current account in storage
+  await seedAccount('acc_current', '当前号', 'current-sess');
+  // Target account
+  await seedAccount('acc_target', '目标号', 'target-sess');
+
+  const result = await switchToAccount('acc_target', 1);
+  assert.equal(result.success, true);
+  // Target cookies should now be in cookieStore
+  assert.ok(cookieStore.some(c => c.value === 'target-sess'));
+  // Active account should be updated
+  assert.equal(storageDataInternal['xhs_active_account'], 'acc_target');
+});
+
+test('switchToAccount returns error for unknown account', async () => {
+  storageDataInternal['xhs_accounts'] = [];
+  storageDataInternal['xhs_active_account'] = null;
+  cookieStore.length = 0;
+
+  const result = await switchToAccount('acc_nonexistent', 1);
+  assert.equal(result.success, false);
+  assert.ok(result.error.includes('not found'));
 });
