@@ -254,6 +254,40 @@
       init();
     }
   }
+  if (!global.__XHS_PASTE_IMAGE_TEST__) {
+    // ---- Account switching: localStorage I/O ----
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message.type === 'xhs-get-localstorage') {
+        const ls = {};
+        try {
+          for (let i = 0; i < global.localStorage.length; i++) {
+            const key = global.localStorage.key(i);
+            ls[key] = global.localStorage.getItem(key);
+          }
+        } catch (_) { /* ignore errors */ }
+        sendResponse(ls);
+        return;
+      }
+      if (message.type === 'xhs-restore-localstorage') {
+        try {
+          global.localStorage.clear();
+          const data = message.data || {};
+          for (const [key, value] of Object.entries(data)) {
+            global.localStorage.setItem(key, value);
+          }
+          sendResponse({ restored: true });
+        } catch (err) {
+          sendResponse({ restored: false, error: err.message });
+        }
+        return;
+      }
+    });
+
+    // ---- Account switching: notify background of page load for detection ----
+    if (isTopFrame()) {
+      chrome.runtime.sendMessage({ type: 'getAccounts' }).catch(() => {});
+    }
+  }
 
   global.XhsPasteImage = Object.assign(global.XhsPasteImage ?? {}, {
     getImageFilesFromDataTransfer,
