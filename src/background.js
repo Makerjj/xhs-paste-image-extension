@@ -11,7 +11,10 @@ chrome.commands.onCommand.addListener(async (command) => {
 
 // ---- Account switching messages ----
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  handleMessage(message, sender).then(sendResponse);
+  handleMessage(message, sender).then(sendResponse).catch((err) => {
+    console.error('handleMessage error:', err);
+    sendResponse({ success: false, error: err.message || 'Internal error' });
+  });
   return true; // keep channel open for async response
 });
 
