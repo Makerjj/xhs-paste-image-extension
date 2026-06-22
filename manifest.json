@@ -1,17 +1,33 @@
 {
   "manifest_version": 3,
-  "name": "XHS Paste Image",
-  "version": "0.1.0",
-  "description": "Paste clipboard images into the Xiaohongshu web creator publish panel.",
-  "permissions": ["activeTab", "clipboardRead", "scripting"],
-  "host_permissions": ["https://creator.xiaohongshu.com/*"],
+  "name": "XHS Multi Tool",
+  "version": "0.2.0",
+  "description": "Paste clipboard images and switch between multiple Xiaohongshu accounts.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "XHS Multi Tool",
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "permissions": ["activeTab", "clipboardRead", "scripting", "cookies", "storage"],
+  "host_permissions": ["*://*.xiaohongshu.com/*"],
   "background": {
     "service_worker": "src/background.js",
     "type": "module"
   },
   "content_scripts": [
     {
-      "matches": ["https://creator.xiaohongshu.com/*"],
+      "matches": ["*://*.xiaohongshu.com/*"],
       "js": [
         "src/paste-image.js",
         "src/dom-targets.js",
