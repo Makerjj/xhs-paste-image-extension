@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 280px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 13px; color: #333; }
+  .header { padding: 12px 16px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 14px; font-weight: 600; }
+  .header .badge { font-size: 11px; color: #999; }
+  .empty { padding: 32px 16px; text-align: center; color: #999; }
+  .empty p { margin-bottom: 16px; }
+  .account-list { max-height: 360px; overflow-y: auto; }
+  .account-item { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; cursor: default; }
+  .account-item:hover { background: #fafafa; }
+  .account-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .account-avatar { width: 32px; height: 32px; border-radius: 50%; background: #f0f0f0; flex-shrink: 0; overflow: hidden; }
+  .account-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .account-detail { min-width: 0; }
+  .account-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .account-meta { font-size: 11px; color: #aaa; margin-top: 2px; }
+  .tag { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 500; }
+  .tag-active { background: #e8f5e9; color: #2e7d32; }
+  .tag-expired { background: #fff3e0; color: #e65100; }
+  .btn { font-size: 12px; padding: 5px 14px; border-radius: 14px; border: none; cursor: pointer; font-weight: 500; }
+  .btn-switch { background: #ff5a5f; color: #fff; }
+  .btn-switch:hover { background: #e04e52; }
+  .btn-switch:disabled { background: #ccc; cursor: not-allowed; }
+  .btn-save { width: 100%; padding: 10px; background: none; border: 1px dashed #ff5a5f; color: #ff5a5f; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  .btn-save:hover { background: #fff5f5; }
+  .footer { padding: 12px 16px; border-top: 1px solid #f0f0f0; }
+  .error-toast { padding: 8px 16px; background: #ffebee; color: #c62828; font-size: 12px; text-align: center; }
+  .delete-btn { opacity: 0; background: none; border: none; cursor: pointer; font-size: 14px; color: #999; padding: 0 4px; }
+  .account-item:hover .delete-btn { opacity: 1; }
+  .delete-btn:hover { color: #e53935; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>XHS 账号切换</h1>
+  <span class="badge" id="tabStatus"></span>
+</div>
+<div id="errorArea"></div>
+<div id="accountList"></div>
+<div class="footer">
+  <button class="btn-save" id="saveBtn">+ 保存当前账号</button>
+</div>
+<script src="popup.js"></script>
+</body>
+</html>
